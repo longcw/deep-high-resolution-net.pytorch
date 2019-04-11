@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 class AIFIDataset(JointsDataset):
 
-    def __init__(self, cfg, root, image_set, is_train, transform=None, pose_format='coco'):
+    def __init__(self, cfg, root, image_set, is_train, transform=None, pose_format='mpii'):
         super(AIFIDataset, self).__init__(cfg, root, image_set, is_train, transform)
 
         format_dataset = {
@@ -110,7 +110,7 @@ class AIFIDataset(JointsDataset):
                 (self.num_joints, 3), dtype=np.float)
             kpt_db.append({
                 'image': image_path,
-                'image_id': image_id,
+                'image_id': image['file_name'],
                 'bbox_tlwh': np.asarray(box),
                 'center': center,
                 'scale': scale,

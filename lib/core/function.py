@@ -313,6 +313,8 @@ def inference(config, image_loader, image_dataset, model, output_dir):
                 seq_names, frame_ids = meta['image_id']
                 frame_ids = frame_ids.numpy().astype(int)
                 all_image_ids.extend(list(zip(seq_names, frame_ids)))
+            elif config.DATASET.DATASET == 'aifi':
+                all_image_ids.extend(meta['image_id'])
 
             idx += num_images
 
