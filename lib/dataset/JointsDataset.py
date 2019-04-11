@@ -115,7 +115,7 @@ class JointsDataset(Dataset):
 
         image_file = db_rec['image']
         image_id = db_rec.get('image_id', -1)
-        bbox_tlwh = db_rec.get('bbox_tlwh', (0, 0, 0, 0))
+        bbox_tlwh = db_rec.get('bbox_tlwh', np.zeros(5, dtype=float))
 
         if self.data_format == 'zip':
             from utils import zipreader
