@@ -96,11 +96,24 @@ def parse_args():
     return parser.parse_args()
 
 
+def load_images(image_root):
+    image_filenames = []
+    curr_dir = os.path.abspath(os.curdir)
+    os.chdir(image_root)
+    for root, dirs, filenames in os.walk('.'):
+        for filename in sorted(filenames):
+            name, ext = os.path.splitext(filename)
+            if ext in {'.jpg', '.png'}:
+                image_filenames.append(os.path.join(root, filename))
+    os.chdir(curr_dir)
+    return image_filenames
+
+
 def get_dummy_detection(keypoints, scores, bbox_ltwh):
     score = np.mean(scores)
     return {
         'score': score,
-        'bbox_ltwh': np.asarray(bbox_ltwh, dtype=np.int32),
+        'bbox_ltwh': np.asarray(bbox_ltwh[:4], dtype=np.int32),
         'keypoints': np.asarray(keypoints, dtype=np.float32),
         'keypoints_score': np.asarray(scores, dtype=np.float32).reshape(-1),
     }
@@ -111,31 +124,44 @@ def convert_tracking(data_dir, out_dir, keypoint_file):
     with open(keypoint_file, 'r') as f:
         pose_data = json.load(f)
 
-    image_wh = None
+    # index keypoint
+    camera_time_to_data = {}
     for filename, data in tqdm(pose_data.items(), total=len(pose_data)):
+        name = os.path.splitext(filename)[0]
+        camera_id, timestamp = os.path.split(name)
+        camera_id = os.path.basename(camera_id)
+
+        camera_time_to_data[(camera_id, timestamp)] = data
+
+    # index images
+    image_names = load_images(image_root)
+    image_wh = None
+    for image_filename in tqdm(image_names, total=len(image_names)):
+        name = os.path.splitext(image_filename)[0]
+        camera_id, timestamp = os.path.split(name)
+        camera_id = os.path.basename(camera_id)
+
         if image_wh is None:
-            image = cv2.imread(os.path.join(image_root, filename))
+            image = cv2.imread(os.path.join(image_root, image_filename))
             image_wh = (image.shape[1], image.shape[0])
 
-        name = os.path.splitext(filename)[0]
-        camera_id, timestamp = os.path.splitext(name)
-        camera_id = int(os.path.basename(camera_id))
-        timestamp = float(timestamp)
         file_data = {
-            'camera_id': camera_id,
-            'timestamp': timestamp,
+            'camera_id': int(camera_id),
+            'timestamp': float(timestamp),
             'image_wh': image_wh,
             'people': []
         }
         output_file = os.path.join(out_dir, name + '.json')
 
-        tlwhs = np.asarray(data['boxes'], dtype=np.float32)
-        keypoints = np.asarray(data['keypoints'], dtype=np.float32)
-        for tlwh, keypoint in zip(tlwhs, keypoints):
-            keypoints_2d = keypoint[:, 0:2]
-            scores = keypoint[:, 2]
-            person = get_dummy_detection(keypoints_2d, scores, tlwh)
-            file_data['people'].append(person)
+        data = camera_time_to_data.get((camera_id, timestamp), None)
+        if data is not None:
+            tlwhs = np.asarray(data['boxes'], dtype=np.float32)
+            keypoints = np.asarray(data['keypoints'], dtype=np.float32)
+            for tlwh, keypoint in zip(tlwhs, keypoints):
+                keypoints_2d = keypoint[:, 0:2]
+                scores = keypoint[:, 2]
+                person = get_dummy_detection(keypoints_2d, scores, tlwh)
+                file_data['people'].append(person)
 
         if not os.path.exists(os.path.dirname(output_file)):
             os.makedirs(os.path.dirname(output_file))
