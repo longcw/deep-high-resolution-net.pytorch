@@ -32,39 +32,28 @@ def parse_args():
                         required=True,
                         type=str)
 
-    args, rest = parser.parse_known_args()
-    # update config
-    update_config(args.cfg)
+    parser.add_argument('opts',
+                        help="Modify config options using the command-line",
+                        default=None,
+                        nargs=argparse.REMAINDER)
 
-    # training
-    parser.add_argument('--frequent',
-                        help='frequency of logging',
-                        default=cfg.PRINT_FREQ,
-                        type=int)
-    parser.add_argument('--gpus',
-                        help='gpus',
-                        type=str)
-    parser.add_argument('--workers',
-                        help='num of dataloader workers',
-                        type=int)
-    parser.add_argument('--model-file',
-                        help='model state file',
-                        type=str)
-    parser.add_argument('--use-detect-bbox',
-                        help='use detect bbox',
-                        action='store_true', default=True)
-    parser.add_argument('--flip-test',
-                        help='use flip test',
-                        action='store_true')
-    parser.add_argument('--post-process',
-                        help='use post process',
-                        action='store_true')
-    parser.add_argument('--shift-heatmap',
-                        help='shift heatmap',
-                        action='store_true')
-    parser.add_argument('--coco-bbox-file',
-                        help='coco detection bbox file',
-                        type=str)
+    # philly
+    parser.add_argument('--modelDir',
+                        help='model directory',
+                        type=str,
+                        default='')
+    parser.add_argument('--logDir',
+                        help='log directory',
+                        type=str,
+                        default='')
+    parser.add_argument('--dataDir',
+                        help='data directory',
+                        type=str,
+                        default='')
+    parser.add_argument('--prevModelDir',
+                        help='prev Model directory',
+                        type=str,
+                        default='')
 
     args = parser.parse_args()
 

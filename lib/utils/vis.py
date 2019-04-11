@@ -121,6 +121,9 @@ def save_debug_images(config, input, meta, target, joints_pred, output,
     if not config.DEBUG.DEBUG:
         return
 
+    if config.DATASET.COLOR_RGB:
+        input = input[:, [2, 1, 0]]
+
     if config.DEBUG.SAVE_BATCH_IMAGES_GT:
         save_batch_image_with_joints(
             input, meta['joints'], meta['joints_vis'],
