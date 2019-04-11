@@ -46,8 +46,8 @@ class JointsDataset(Dataset):
         self.prob_half_body = cfg.DATASET.PROB_HALF_BODY
         self.color_rgb = cfg.DATASET.COLOR_RGB
 
-        self.target_type = cfg.MODEL.TARGET_TYPE
         self.image_size = np.array(cfg.MODEL.IMAGE_SIZE)
+        self.target_type = cfg.MODEL.TARGET_TYPE
         self.heatmap_size = np.array(cfg.MODEL.HEATMAP_SIZE)
         self.sigma = cfg.MODEL.SIGMA
         self.use_different_joints_weight = cfg.LOSS.USE_DIFFERENT_JOINTS_WEIGHT
@@ -114,8 +114,8 @@ class JointsDataset(Dataset):
         db_rec = copy.deepcopy(self.db[idx])
 
         image_file = db_rec['image']
-        filename = db_rec['filename'] if 'filename' in db_rec else ''
-        imgnum = db_rec['imgnum'] if 'imgnum' in db_rec else ''
+        image_id = db_rec.get('image_id', -1)
+        bbox_tlwh = db_rec.get('bbox_tlwh', (0, 0, 0, 0))
 
         if self.data_format == 'zip':
             from utils import zipreader
@@ -185,8 +185,8 @@ class JointsDataset(Dataset):
 
         meta = {
             'image': image_file,
-            'filename': filename,
-            'imgnum': imgnum,
+            'image_id': image_id,
+            'bbox_tlwh': bbox_tlwh,
             'joints': joints,
             'joints_vis': joints_vis,
             'center': c,

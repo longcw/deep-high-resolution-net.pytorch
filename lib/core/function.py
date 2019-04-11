@@ -7,16 +7,18 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
- 
-import time
+
 import logging
+import time
 import os
+from collections import defaultdict
+import ujson as json
 
 import numpy as np
 import torch
 
 from core.evaluate import accuracy
-from core.inference import get_final_preds
+from core.inference import get_final_preds, get_max_preds
 from utils.transforms import flip_back
 from utils.vis import save_debug_images
 
@@ -110,8 +112,7 @@ def validate(config, val_loader, val_dataset, model, criterion, output_dir,
     )
     all_boxes = np.zeros((num_samples, 6))
     image_path = []
-    filenames = []
-    imgnums = []
+    image_ids = []
     idx = 0
     with torch.no_grad():
         end = time.time()
@@ -179,6 +180,8 @@ def validate(config, val_loader, val_dataset, model, criterion, output_dir,
             all_boxes[idx:idx + num_images, 4] = np.prod(s*200, 1)
             all_boxes[idx:idx + num_images, 5] = score
             image_path.extend(meta['image'])
+            if config.DATASET.DATASET == 'posetrack':
+                image_ids.extend(meta['image_id'].numpy())
 
             idx += num_images
 
@@ -198,8 +201,7 @@ def validate(config, val_loader, val_dataset, model, criterion, output_dir,
                                   prefix)
 
         name_values, perf_indicator = val_dataset.evaluate(
-            config, all_preds, output_dir, all_boxes, image_path,
-            filenames, imgnums
+            config, all_preds, output_dir, all_boxes, image_path, image_ids=image_ids
         )
 
         model_name = config.MODEL.NAME
@@ -238,6 +240,107 @@ def validate(config, val_loader, val_dataset, model, criterion, output_dir,
             writer_dict['valid_global_steps'] = global_steps + 1
 
     return perf_indicator
+
+
+def inference(config, image_loader, image_dataset, model, output_dir):
+    batch_time = AverageMeter()
+    losses = AverageMeter()
+    acc = AverageMeter()
+
+    # switch to evaluate mode
+    model.eval()
+
+    num_samples = len(image_dataset)
+    all_preds = np.zeros((num_samples, config.MODEL.NUM_JOINTS, 3),
+                         dtype=np.float32)
+    all_boxes = np.zeros((num_samples, 5))
+    all_image_pathes = []
+    all_image_ids = []
+    idx = 0
+    with torch.no_grad():
+        end = time.time()
+        for i, (input, target, target_weight, meta) in enumerate(image_loader):
+            num_images = input.size(0)
+            # compute output
+            outputs = model(input)
+            if isinstance(outputs, list):
+                output = outputs[-1]
+            else:
+                output = outputs
+
+            if config.TEST.FLIP_TEST:
+                # this part is ugly, because pytorch has not supported negative index
+                # input_flipped = model(input[:, :, :, ::-1])
+                input_flipped = np.flip(input.cpu().numpy(), 3).copy()
+                input_flipped = torch.from_numpy(input_flipped).cuda()
+                outputs_flipped = model(input_flipped)
+                if isinstance(outputs_flipped, list):
+                    output_flipped = outputs_flipped[-1]
+                else:
+                    output_flipped = outputs_flipped
+
+                output_flipped = flip_back(output_flipped.cpu().numpy(),
+                                           image_dataset.flip_pairs)
+                output_flipped = torch.from_numpy(output_flipped.copy()).cuda()
+
+                # feature is not aligned, shift flipped heatmap for higher accuracy
+                if config.TEST.SHIFT_HEATMAP:
+                    output_flipped[:, :, :, 1:] = \
+                        output_flipped.clone()[:, :, :, 0:-1]
+                    # output_flipped[:, :, :, 0] = 0
+
+                output = (output + output_flipped) * 0.5
+
+            # measure elapsed time
+            batch_time.update(time.time() - end)
+            end = time.time()
+
+            c = meta['center'].numpy()
+            s = meta['scale'].numpy()
+            score = meta['score'].numpy()
+            tlwhs = meta['bbox_tlwh'].numpy()
+            output = output.data.cpu()
+
+            preds, maxvals = get_final_preds(config, output.numpy(), c, s)
+
+            all_preds[idx:idx + num_images, :, 0:2] = preds[:, :, 0:2]
+            all_preds[idx:idx + num_images, :, 2:3] = maxvals
+            # double check this all_boxes parts
+            all_boxes[idx:idx + num_images, 0:4] = tlwhs
+            all_boxes[idx:idx + num_images, 4] = score
+            all_image_pathes.extend(meta['image'])
+            if config.DATASET.DATASET == 'mot':
+                seq_names, frame_ids = meta['image_id']
+                frame_ids = frame_ids.numpy().astype(int)
+                all_image_ids.extend(list(zip(seq_names, frame_ids)))
+
+            idx += num_images
+
+            if i % config.PRINT_FREQ == 0:
+                msg = 'Test: [{0}/{1}]\t' \
+                      'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'.format(
+                    i, len(image_loader), batch_time=batch_time)
+                logger.info(msg)
+
+                prefix = '{}_{}'.format(os.path.join(output_dir, 'inference'), i)
+                pred, _ = get_max_preds(output.numpy())
+                save_debug_images(config, input, meta, target, pred * 4, output, prefix)
+
+    # write output
+    frame_results = defaultdict(list)
+    for image_id, pred, box in zip(all_image_ids, all_preds, all_boxes):
+        frame_results[image_id].append((pred.astype(float).tolist(), box.astype(float).tolist()))
+
+    final_results = {}
+    for image_id, results in frame_results.items():
+        keypoints, boxes = zip(*results)
+        final_results[image_id] = {'keypoints': keypoints, 'boxes': boxes}
+
+    if not os.path.isdir(output_dir):
+        os.makedirs(output_dir)
+    with open(os.path.join(output_dir, 'box_keypoints.json'), 'w') as f:
+        json.dump(final_results, f)
+    logger.info('Save results to {}'.format(os.path.join(output_dir, 'box_keypoints.json')))
 
 
 # markdown format output

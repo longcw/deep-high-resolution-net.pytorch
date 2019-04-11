@@ -8,10 +8,10 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from collections import OrderedDict
 import logging
 import os
 import json_tricks as json
-from collections import OrderedDict
 
 import numpy as np
 from scipy.io import loadmat, savemat
@@ -23,15 +23,38 @@ logger = logging.getLogger(__name__)
 
 
 class MPIIDataset(JointsDataset):
+    """
+    {{0, "Head"}, //head top
+    {1, "Neck"}, //upper neck
+    {2, "RShoulder"}, //r shoulder
+    {3, "RElbow"}, // r elbow
+    {4, "RWrist"}, // r wrist
+    {5, "LShoulder"}, // l shoulder
+    {6, "LElbow"}, // l elbow
+    {7, "LWrist"}, // l wrist
+    {8, "RHip"}, //r hip
+    {9, "RKnee"}, // r knee
+    {10, "RAnkle"}, //r ankle
+    {11, "LHip"}, //l hip
+    {12, "LKnee"}, //l knee
+    {13, "LAnkle"},//l ankle
+    {14, "Chest"},// thorax}
+    """
+
+    num_joints = 16
+    flip_pairs = [[0, 5], [1, 4], [2, 3], [10, 15], [11, 14], [12, 13]]
+    upper_body_ids = (7, 8, 9, 10, 11, 12, 13, 14, 15)
+    lower_body_ids = (0, 1, 2, 3, 4, 5, 6)
+
     def __init__(self, cfg, root, image_set, is_train, transform=None):
-        super().__init__(cfg, root, image_set, is_train, transform)
+        super(MPIIDataset, self).__init__(cfg, root, image_set, is_train, transform)
 
-        self.num_joints = 16
-        self.flip_pairs = [[0, 5], [1, 4], [2, 3], [10, 15], [11, 14], [12, 13]]
+        self.num_joints = MPIIDataset.num_joints
+        self.flip_pairs = MPIIDataset.flip_pairs
+        self.upper_body_ids = MPIIDataset.upper_body_ids
+        self.lower_body_ids = MPIIDataset.lower_body_ids
+
         self.parent_ids = [1, 2, 6, 6, 3, 4, 6, 6, 7, 8, 11, 12, 7, 7, 13, 14]
-
-        self.upper_body_ids = (7, 8, 9, 10, 11, 12, 13, 14, 15)
-        self.lower_body_ids = (0, 1, 2, 3, 4, 5, 6)
 
         self.db = self._get_db()
 
@@ -79,17 +102,13 @@ class MPIIDataset(JointsDataset):
                 joints_3d_vis[:, 1] = joints_vis[:]
 
             image_dir = 'images.zip@' if self.data_format == 'zip' else 'images'
-            gt_db.append(
-                {
-                    'image': os.path.join(self.root, image_dir, image_name),
-                    'center': c,
-                    'scale': s,
-                    'joints_3d': joints_3d,
-                    'joints_3d_vis': joints_3d_vis,
-                    'filename': '',
-                    'imgnum': 0,
-                }
-            )
+            gt_db.append({
+                'image': os.path.join(self.root, image_dir, image_name),
+                'center': c,
+                'scale': s,
+                'joints_3d': joints_3d,
+                'joints_3d_vis': joints_3d_vis,
+                })
 
         return gt_db
 

@@ -8,15 +8,17 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from collections import defaultdict
-from collections import OrderedDict
 import logging
 import os
+import pickle
+from collections import defaultdict
+from collections import OrderedDict
 
+# import json_tricks as json
+import ujson as json
+import numpy as np
 from pycocotools.coco import COCO
 from pycocotools.cocoeval import COCOeval
-import json_tricks as json
-import numpy as np
 
 from dataset.JointsDataset import JointsDataset
 from nms.nms import oks_nms
@@ -51,8 +53,15 @@ class COCODataset(JointsDataset):
         [16,14],[14,12],[17,15],[15,13],[12,13],[6,12],[7,13], [6,7],[6,8],
         [7,9],[8,10],[9,11],[2,3],[1,2],[1,3],[2,4],[3,5],[4,6],[5,7]]
     '''
+
+    num_joints = 17
+    flip_pairs = [[1, 2], [3, 4], [5, 6], [7, 8],
+                  [9, 10], [11, 12], [13, 14], [15, 16]]
+    upper_body_ids = (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+    lower_body_ids = (11, 12, 13, 14, 15, 16)
+
     def __init__(self, cfg, root, image_set, is_train, transform=None):
-        super().__init__(cfg, root, image_set, is_train, transform)
+        super(COCODataset, self).__init__(cfg, root, image_set, is_train, transform)
         self.nms_thre = cfg.TEST.NMS_THRE
         self.image_thre = cfg.TEST.IMAGE_THRE
         self.soft_nms = cfg.TEST.SOFT_NMS
@@ -87,12 +96,11 @@ class COCODataset(JointsDataset):
         self.num_images = len(self.image_set_index)
         logger.info('=> num_images: {}'.format(self.num_images))
 
-        self.num_joints = 17
-        self.flip_pairs = [[1, 2], [3, 4], [5, 6], [7, 8],
-                           [9, 10], [11, 12], [13, 14], [15, 16]]
+        self.num_joints = COCODataset.num_joints
+        self.flip_pairs = COCODataset.flip_pairs
+        self.upper_body_ids = COCODataset.upper_body_ids
+        self.lower_body_ids = COCODataset.lower_body_ids
         self.parent_ids = None
-        self.upper_body_ids = (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
-        self.lower_body_ids = (11, 12, 13, 14, 15, 16)
 
         self.joints_weight = np.array(
             [
@@ -201,8 +209,6 @@ class COCODataset(JointsDataset):
                 'scale': scale,
                 'joints_3d': joints_3d,
                 'joints_3d_vis': joints_3d_vis,
-                'filename': '',
-                'imgnum': 0,
             })
 
         return rec
@@ -378,7 +384,7 @@ class COCODataset(JointsDataset):
         ]
 
         results = self._coco_keypoint_results_one_category_kernel(data_pack[0])
-        logger.info('=> writing results json to %s' % res_file)
+        logger.info('=> Writing results json to %s' % res_file)
         with open(res_file, 'w') as f:
             json.dump(results, f, sort_keys=True, indent=4)
         try:
