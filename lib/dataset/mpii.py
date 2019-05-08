@@ -24,21 +24,22 @@ logger = logging.getLogger(__name__)
 
 class MPIIDataset(JointsDataset):
     """
-    {{0, "Head"}, //head top
-    {1, "Neck"}, //upper neck
-    {2, "RShoulder"}, //r shoulder
-    {3, "RElbow"}, // r elbow
-    {4, "RWrist"}, // r wrist
-    {5, "LShoulder"}, // l shoulder
-    {6, "LElbow"}, // l elbow
-    {7, "LWrist"}, // l wrist
-    {8, "RHip"}, //r hip
-    {9, "RKnee"}, // r knee
-    {10, "RAnkle"}, //r ankle
-    {11, "LHip"}, //l hip
-    {12, "LKnee"}, //l knee
-    {13, "LAnkle"},//l ankle
-    {14, "Chest"},// thorax}
+    0 - r ankle,
+    1 - r knee,
+    2 - r hip,
+    3 - l hip,
+    4 - l knee,
+    5 - l ankle,
+    6 - pelvis,
+    7 - thorax,
+    8 - upper neck,
+    9 - head top,
+    10 - r wrist,
+    11 - r elbow,
+    12 - r shoulder,
+    13 - l shoulder,
+    14 - l elbow,
+    15 - l wrist
     """
 
     num_joints = 16
