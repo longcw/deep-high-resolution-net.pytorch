@@ -110,7 +110,7 @@ def load_images(image_root):
 
 
 def get_dummy_detection(keypoints, scores, bbox_ltwh):
-    score = np.mean(scores)
+    score = bbox_ltwh[4]
     return {
         'score': score,
         'bbox_ltwh': np.asarray(bbox_ltwh[:4], dtype=np.int32),
