@@ -119,7 +119,7 @@ def get_dummy_detection(keypoints, scores, bbox_ltwh):
     }
 
 
-def convert_tracking(data_dir, out_dir, keypoint_file):
+def convert_tracking(data_dir, out_dir, keypoint_file, min_score=0.4):
     image_root = os.path.join(data_dir, 'frames')
     with open(keypoint_file, 'r') as f:
         pose_data = json.load(f)
@@ -161,6 +161,8 @@ def convert_tracking(data_dir, out_dir, keypoint_file):
                 keypoints_2d = keypoint[:, 0:2]
                 scores = keypoint[:, 2]
                 person = get_dummy_detection(keypoints_2d, scores, tlwh)
+                if person['score'] < min_score:
+                    continue
                 file_data['people'].append(person)
 
         if not os.path.exists(os.path.dirname(output_file)):
