@@ -85,13 +85,13 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Convert dataset')
     parser.add_argument(
         '--outdir', help="output dir for json files",
-        default='/media/longc/LSSD/Public/PILSNU/detections_keypoints', type=str)
+        required=True, type=str)
     parser.add_argument(
         '--datadir', help="keypoint file",
-        default='/data/MCMTT/Public/PILSNU', type=str)
+        required=True, type=str)
     parser.add_argument(
         '--keypoint-file', help="keypoint file",
-        default='/extra/code/deep-high-resolution-net.pytorch/output/aifi/pose_hrnet/mpii_w32_256x256_adam_lr1e-3/box_keypoints.json', type=str)
+        required=True, type=str)
 
     return parser.parse_args()
 
@@ -135,15 +135,13 @@ def convert_tracking(data_dir, out_dir, keypoint_file, min_score=0.4):
 
     # index images
     image_names = load_images(image_root)
-    image_wh = None
     for image_filename in tqdm(image_names, total=len(image_names)):
         name = os.path.splitext(image_filename)[0]
         camera_id, timestamp = os.path.split(name)
         camera_id = os.path.basename(camera_id)
 
-        if image_wh is None:
-            image = cv2.imread(os.path.join(image_root, image_filename))
-            image_wh = (image.shape[1], image.shape[0])
+        image = cv2.imread(os.path.join(image_root, image_filename))
+        image_wh = (image.shape[1], image.shape[0])
 
         file_data = {
             'camera_id': int(camera_id),
