@@ -17,11 +17,20 @@ DATASET:
   FLIP: true
   NUM_JOINTS_HALF_BODY: 8
   PROB_HALF_BODY: -1.0
-  ROOT: '/data/MCMTT/Public/PETS2009.S2.L1'
+  ROOT: '/media/longc/LSSD/data/MCMT/PETS2009.S2.L1'
   ROT_FACTOR: 30
   SCALE_FACTOR: 0.25
   TEST_SET: valid
   TRAIN_SET: train
+
+TEST:
+  BATCH_SIZE_PER_GPU: 32
+  MODEL_FILE: ''
+  FLIP_TEST: true
+  POST_PROCESS: true
+  SHIFT_HEATMAP: true
+  COCO_BBOX_FILE: '/extra/code/maskrcnn-benchmark/inference/coco_PETS2009.S2.L1/bbox.json'
+
 MODEL:
   INIT_WEIGHTS: true
   NAME: pose_hrnet
@@ -106,13 +115,7 @@ TRAIN:
   GAMMA2: 0.0
   MOMENTUM: 0.9
   NESTEROV: false
-TEST:
-  BATCH_SIZE_PER_GPU: 32
-  MODEL_FILE: ''
-  FLIP_TEST: true
-  POST_PROCESS: true
-  SHIFT_HEATMAP: true
-  COCO_BBOX_FILE: '/extra/code/maskrcnn-benchmark/inference/coco_PETS2009.S2.L1/bbox.json'
+
 DEBUG:
   DEBUG: true
   SAVE_BATCH_IMAGES_GT: true
