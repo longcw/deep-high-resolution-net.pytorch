@@ -17,7 +17,7 @@ DATASET:
   FLIP: true
   NUM_JOINTS_HALF_BODY: 8
   PROB_HALF_BODY: -1.0
-  ROOT: '/media/longc/LSSD/data/MCMT/PETS2009.S2.L1'
+  ROOT: ''
   ROT_FACTOR: 30
   SCALE_FACTOR: 0.25
   TEST_SET: valid
@@ -29,7 +29,7 @@ TEST:
   FLIP_TEST: true
   POST_PROCESS: true
   SHIFT_HEATMAP: true
-  COCO_BBOX_FILE: '/extra/code/maskrcnn-benchmark/inference/coco_PETS2009.S2.L1/bbox.json'
+  COCO_BBOX_FILE: ''
 
 MODEL:
   INIT_WEIGHTS: true
